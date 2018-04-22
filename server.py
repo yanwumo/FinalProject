@@ -1,11 +1,13 @@
 import io
 import socket
-import struct
 import picamera
 
+width = 416
+height = 304
+
 # Initialize camera
-camera = picamera.PiCamera()
-camera.resolution = (320, 240)
+camera = picamera.PiCamera(sensor_mode=4, resolution='416x304', framerate=40)
+#camera.resolution = (width, height)
 # Start a preview
 camera.start_preview()
 stream = io.BytesIO()
@@ -27,14 +29,9 @@ try:
         print("Capture")
         camera.capture(stream, 'yuv')
         print("Capture ends")
-        # Write the length of the capture to the stream and flush to
-        # ensure it actually gets sent
-        # connection.write(struct.pack('<L', stream.tell()))
-        # connection.write(struct.pack('<L', 640 * 480))
-        # connection.flush()
         # Rewind the stream and send the image data over the wire
         stream.seek(0)
-        connection.write(stream.read(320 * 240))
+        connection.write(stream.read(width * height))
         # Reset the stream for the next capture
         stream.seek(0)
         stream.truncate()

@@ -1,26 +1,50 @@
-import io
 import socket
-import struct
-import time
 import numpy as np
 import cv2
 import signdetect
 from matplotlib import pyplot as plt
+import threading
+import time
 
-# Connect a client socket to my_server:8000 (change my_server to the
-# hostname of your server)
-client_socket = socket.socket()
-client_socket.connect(('192.168.1.3', 8000))
-connection = client_socket.makefile('rb')
+width = 416
+height = 304
 
-while True:
-    client_socket.send(b'k')
+pic = []
+lock = threading.Lock()
+event = threading.Event()
 
-    raw_arr = np.frombuffer(connection.read(320 * 240), dtype=np.uint8)
-    pic = np.reshape(raw_arr, (240, 320))
-    #pic = cv2.resize(pic, (0, 0), fx=0.4, fy=0.4)
 
-    #cv2.imshow("frame", pic)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-    signdetect.detect_haar("stopsign_classifier.xml", pic, True)
+class ClientThread(threading.Thread):
+    def run(self):
+        global pic
+        # Connect a client socket to my_server:8000 (change my_server to the
+        # hostname of your server)
+        client_socket = socket.socket()
+        client_socket.connect(('192.168.2.3', 8000))
+        connection = client_socket.makefile('rb')
+
+        client_socket.send(b'0')
+        raw_arr = np.frombuffer(connection.read(width * height), dtype=np.uint8)
+        local_pic = np.reshape(raw_arr, (height, width))
+        lock.acquire()
+        pic = local_pic
+        lock.release()
+        event.set()
+
+        while True:
+            client_socket.send(b'0')
+            raw_arr = np.frombuffer(connection.read(width * height), dtype=np.uint8)
+            local_pic = np.reshape(raw_arr, (height, width))
+            lock.acquire()
+            pic = local_pic
+            lock.release()
+
+
+if __name__ == "__main__":
+    ClientThread().start()
+    event.wait()
+    while True:
+        signdetect.detect_haar("stopsign_classifier.xml", pic, True)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+        time.sleep(0.1)
