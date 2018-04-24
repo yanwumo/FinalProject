@@ -26,25 +26,27 @@ class ClientThread(threading.Thread):
         client_socket.send(b'0')
         raw_arr = np.frombuffer(connection.read(width * height), dtype=np.uint8)
         local_pic = np.reshape(raw_arr, (height, width))
+        client_socket.send(b'0')
         lock.acquire()
         pic = local_pic
         lock.release()
         event.set()
 
         while True:
-            client_socket.send(b'0')
             raw_arr = np.frombuffer(connection.read(width * height), dtype=np.uint8)
             local_pic = np.reshape(raw_arr, (height, width))
+            client_socket.send(b'0')
             lock.acquire()
             pic = local_pic
             lock.release()
 
 
 if __name__ == "__main__":
+    # Initialize classifier
+    classifier = cv2.CascadeClassifier("stopsig n_classifier.xml")
+
     ClientThread().start()
     event.wait()
     while True:
-        signdetect.detect_haar("stopsign_classifier.xml", pic, True)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-        time.sleep(0.1)
+        stop_signs = signdetect.detect_haar(classifier, pic, True)
+        time.sleep(0.5)

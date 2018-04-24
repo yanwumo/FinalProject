@@ -1,6 +1,14 @@
 import io
 import socket
 import picamera
+import bluepy.btle as btle
+
+# Initialize bluetooth
+print("Connecting to Bluetooth LE...")
+p = btle.Peripheral("34:15:13:1C:68:DD")
+s = p.getServiceByUUID("0000ffe0-0000-1000-8000-00805f9b34fb")
+c = s.getCharacteristics()[0]
+print("Connected")
 
 width = 416
 height = 304
@@ -26,6 +34,9 @@ try:
         data = conn[0].recv(10)
         if not data:
             break
+        if data == b'1':
+            c.write(b'1')
+            continue
         print("Capture")
         camera.capture(stream, 'yuv')
         print("Capture ends")
@@ -42,3 +53,4 @@ finally:
     connection.close()
     server_socket.close()
     camera.stop_preview()
+    p.disconnect()
